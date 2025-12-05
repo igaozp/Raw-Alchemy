@@ -1,4 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+
+# --- Platform-specific settings ---
+# Enable strip only on Linux for a smaller executable.
+# On Windows, stripping can sometimes cause issues with antivirus software
+# or runtime behavior, so it's safer to leave it disabled.
+strip_executable = True if sys.platform.startswith('linux') else False
 
 
 a = Analysis(
@@ -40,7 +47,7 @@ exe = EXE(
     name='RawAlchemy',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=strip_executable,
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,

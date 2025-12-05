@@ -15,14 +15,11 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "imageio",
     "tifffile",
     "click",
-    "matplotlib",
     "rawpy @ git+https://github.com/shenmintao/rawpy.git",
     "colour-science @ git+https://github.com/colour-science/colour.git@develop",
     "scipy",
-    "Pillow",
     "pyinstaller",
     "numba"
 ]
