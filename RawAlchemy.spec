@@ -11,12 +11,24 @@ import sys
 strip_executable = True if sys.platform.startswith('linux') else False
 
 
+# --- Platform-specific binaries ---
+binaries_list = []
+if sys.platform == 'darwin':
+    import os
+    import rawpy
+
+    # Find the path to libraw_r.dylib within the rawpy package
+    rawpy_path = os.path.dirname(rawpy.__file__)
+    libraw_dylib_path = os.path.join(rawpy_path, 'libraw_r.dylib')
+    binaries_list.append((libraw_dylib_path, '.'))
+
+
 a = Analysis(
     ['src/raw_alchemy/gui.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries_list,
     datas=[('src/raw_alchemy/vendor', 'vendor'), ('icon.ico', '.')],
-    hiddenimports=[],
+    hiddenimports=['tkinter'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
