@@ -13,33 +13,19 @@ strip_executable = True if sys.platform.startswith('linux') else False
 
 # --- Platform-specific binaries ---
 binaries_list = []
-if sys.platform == 'darwin':
+if sys.platform == 'darwin' or sys.platform.startswith('linux'):
     import os
     import rawpy
 
-    # Find the path to libraw_r.so within the rawpy package
+    # Find the path to libraw_r library within the rawpy package
     rawpy_path = os.path.dirname(rawpy.__file__)
-    dylib_file = None
+    lib_file = None
     for f in os.listdir(rawpy_path):
-        if f.startswith('libraw_r.dylib'):
-            so_file = os.path.join(rawpy_path, f)
+        if f.startswith('libraw_r'):
+            lib_file = os.path.join(rawpy_path, f)
             break
-    if so_file:
-        binaries_list.append((dylib_file, '.'))
-
-elif sys.platform.startswith('linux'):
-    import os
-    import rawpy
-
-    # Find the path to libraw_r.so within the rawpy package
-    rawpy_path = os.path.dirname(rawpy.__file__)
-    so_file = None
-    for f in os.listdir(rawpy_path):
-        if f.startswith('libraw_r.so'):
-            so_file = os.path.join(rawpy_path, f)
-            break
-    if so_file:
-        binaries_list.append((so_file, '.'))
+    if lib_file:
+        binaries_list.append((lib_file, '.'))
 
 
 a = Analysis(
