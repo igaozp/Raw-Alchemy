@@ -15,11 +15,12 @@ def _get_base_path():
     Gets the base path for data files.
     Handles running as a script and as a frozen PyInstaller executable.
     """
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # Running in a PyInstaller bundle. The path is to the temp folder.
-        return sys._MEIPASS
+    if getattr(sys, 'frozen', False):
+        # For frozen apps (both one-file and one-dir), the base path is the
+        # directory containing the executable.
+        return os.path.dirname(sys.executable)
     else:
-        # Running as a normal script. The path is to the script's directory.
+        # Running as a normal script.
         return os.path.dirname(os.path.abspath(__file__))
 
 # 根据平台加载正确的库
