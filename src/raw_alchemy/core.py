@@ -25,6 +25,7 @@ LOG_TO_WORKING_SPACE = {
     'F-Log2C': 'F-Gamut C',
     'V-Log': 'V-Gamut',
     'N-Log': 'N-Gamut',
+    'L-Log': 'ITU-R BT.2020',
     'Canon Log 2': 'Cinema Gamut',
     'Canon Log 3': 'Cinema Gamut',
     'S-Log3': 'S-Gamut3',
@@ -234,9 +235,9 @@ def process_image(
             save_params = {}
             if file_ext in ['.jpg', '.jpeg']:
                 save_params = {
-                    'quality': 95,     # 【优化】拒绝 3MB 废片，提升画质
-                    'subsampling': 0,  # 【优化】4:4:4 采样，防止红色/文字模糊
-                    'optimize': True   # 开启 Huffman 优化
+                    'quality': 95,
+                    'subsampling': 0,
+                    'optimize': True
                 }
             
             Image.fromarray(output_image_uint8).save(output_path, **save_params)

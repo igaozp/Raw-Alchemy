@@ -23,7 +23,7 @@ class GuiApplication(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
-        self.master.title("Raw Alchemy - Batch Processor")
+        self.master.title("Raw Alchemy")
         self.master.geometry("1000x950")
         
         # --- Icon Setting ---
@@ -49,15 +49,8 @@ class GuiApplication(tk.Frame):
         
         # Start the GUI update loop
         self.master.after(100, self.process_gui_queue)
-        
-        # --- Variable Traces ---
-        self.output_format_var.trace_add("write", self.on_output_format_change)
 
     def create_widgets(self):
-        #Style
-        style = ttk.Style()
-        style.configure("Bold.TLabel", font=('Helvetica', 10, 'bold'))
-
         # --- Frame for IO ---
         io_frame = ttk.LabelFrame(self, text="Input / Output Source", padding=(10, 5))
         io_frame.pack(padx=10, pady=5, fill="x")
@@ -82,20 +75,22 @@ class GuiApplication(tk.Frame):
         ttk.Button(btn_f2, text="Save As...", command=self.browse_output_file).pack(side="left")
         ttk.Button(btn_f2, text="Folder...", command=self.browse_output_folder).pack(side="left", padx=2)
         
+        # Output Format
+        ttk.Label(io_frame, text="Output Format:").grid(row=2, column=0, sticky="w", pady=5)
+        self.output_format_var = tk.StringVar(value='tif')
+        ttk.OptionMenu(io_frame, self.output_format_var, 'tif', 'tif', 'heif', 'jpg').grid(row=2, column=1, sticky="w", padx=5)
+        self.output_format_var.trace_add("write", self.on_output_format_change)
+        
         io_frame.columnconfigure(1, weight=1)
 
         # --- Frame for Processing Settings ---
         settings_frame = ttk.LabelFrame(self, text="Processing Core", padding=(10, 5))
         settings_frame.pack(padx=10, pady=5, fill="x")
 
-        # Row 0: Log Space & Output Format
+        # Row 0: Log Space
         ttk.Label(settings_frame, text="Log Space:").grid(row=0, column=0, sticky="w", pady=5)
         self.log_space_var = tk.StringVar(value=list(core.LOG_TO_WORKING_SPACE.keys())[0])
-        ttk.OptionMenu(settings_frame, self.log_space_var, self.log_space_var.get(), *core.LOG_TO_WORKING_SPACE.keys()).grid(row=0, column=1, sticky="ew", padx=5)
-
-        ttk.Label(settings_frame, text="Format:").grid(row=0, column=2, sticky="e", pady=5)
-        self.output_format_var = tk.StringVar(value='tif')
-        ttk.OptionMenu(settings_frame, self.output_format_var, 'tif', 'tif', 'heif', 'jpg').grid(row=0, column=3, sticky="ew", padx=5)
+        ttk.OptionMenu(settings_frame, self.log_space_var, self.log_space_var.get(), *core.LOG_TO_WORKING_SPACE.keys()).grid(row=0, column=1, columnspan=3, sticky="ew", padx=5)
 
         # Row 1: LUT
         ttk.Label(settings_frame, text="LUT (.cube):").grid(row=1, column=0, sticky="w", pady=5)
@@ -123,22 +118,25 @@ class GuiApplication(tk.Frame):
 
         self.exposure_mode_var = tk.StringVar(value="Auto")
         
-        # Controls Frame
-        ctrl_frame = ttk.Frame(exp_frame)
-        ctrl_frame.pack(fill="x")
+        # Use grid layout for two rows
+        exp_frame.columnconfigure(1, weight=1)
 
-        # Auto Mode
-        ttk.Radiobutton(ctrl_frame, text="Auto Exposure", variable=self.exposure_mode_var, value="Auto", command=self.toggle_exposure_controls).pack(side="left")
-        self.auto_opts_frame = ttk.Frame(ctrl_frame)
+        # --- Row 0: Auto ---
+        auto_frame = ttk.Frame(exp_frame)
+        auto_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+        ttk.Radiobutton(auto_frame, text="Auto Exposure: ", variable=self.exposure_mode_var, value="Auto", command=self.toggle_exposure_controls).pack(side="left")
+        
+        self.auto_opts_frame = ttk.Frame(auto_frame)
         self.auto_opts_frame.pack(side="left", padx=10)
-        ttk.Label(self.auto_opts_frame, text="Method:").pack(side="left")
         self.metering_mode_var = tk.StringVar(value='matrix')
         ttk.OptionMenu(self.auto_opts_frame, self.metering_mode_var, 'matrix', *core.METERING_MODES).pack(side="left", padx=5)
 
-        # Manual Mode
-        ttk.Frame(ctrl_frame, width=20).pack(side="left") # Spacer
-        ttk.Radiobutton(ctrl_frame, text="Manual EV", variable=self.exposure_mode_var, value="Manual", command=self.toggle_exposure_controls).pack(side="left")
-        self.manual_opts_frame = ttk.Frame(ctrl_frame)
+        # --- Row 1: Manual ---
+        manual_frame = ttk.Frame(exp_frame)
+        manual_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        ttk.Radiobutton(manual_frame, text="Manual EV: ", variable=self.exposure_mode_var, value="Manual", command=self.toggle_exposure_controls).pack(side="left")
+
+        self.manual_opts_frame = ttk.Frame(manual_frame)
         self.manual_opts_frame.pack(side="left", padx=10, fill="x", expand=True)
         
         self.exposure_stops_var = tk.DoubleVar(value=0.0)
@@ -161,18 +159,19 @@ class GuiApplication(tk.Frame):
         self.log_text.tag_config("INFO", foreground="blue")
         self.log_text.tag_config("ID", foreground="gray")
 
-        # Progress Bar
-        progress_frame = ttk.Frame(self)
-        progress_frame.pack(padx=10, pady=(0, 10), fill="x")
+        # Progress Bar & Actions
+        action_frame = ttk.Frame(self)
+        action_frame.pack(padx=10, pady=10, fill="x")
+        
         self.progress_var = tk.DoubleVar(value=0)
-        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.pack(side="left", fill="x", expand=True)
-        self.progress_label = ttk.Label(progress_frame, text="Ready")
-        self.progress_label.pack(side="right", padx=(10, 0))
+        self.progress_bar = ttk.Progressbar(action_frame, variable=self.progress_var, maximum=100, length=400)
+        self.progress_bar.pack(side="left")
+        
+        self.progress_label = ttk.Label(action_frame, text="Ready", width=16, anchor='w')
+        self.progress_label.pack(side="left", padx=(10, 0))
 
-        # Start Button
-        self.start_button = ttk.Button(self, text="START PROCESSING", command=self.start_processing_thread, style="Bold.TLabel")
-        self.start_button.pack(padx=10, pady=10, fill="x", ipady=5)
+        self.start_button = ttk.Button(action_frame, text="Start Processing", command=self.start_processing_thread)
+        self.start_button.pack(side="right")
 
     def on_output_format_change(self, *args):
         # 只有当输出路径是文件（有扩展名）时才自动替换扩展名
