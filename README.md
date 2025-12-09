@@ -4,7 +4,7 @@
 
 ---
 
-A Python-based command-line tool for advanced RAW image processing pipelines. It is designed to convert RAW files into a wide-gamut linear space (ProPhoto RGB), apply camera-specific Log curves, and integrate creative LUTs, achieving a complete and color-managed workflow.
+A Python-based tool for advanced RAW image processing pipelines. It is designed to convert RAW files into a wide-gamut linear space (ProPhoto RGB), apply camera-specific Log curves, and integrate creative LUTs, achieving a complete and color-managed workflow.
 
 ### Core Philosophy
 
