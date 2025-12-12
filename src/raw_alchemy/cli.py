@@ -1,5 +1,16 @@
 import click
-from raw_alchemy import core, orchestrator
+# Handle imports to allow running as a script or a package
+try:
+    from . import core, orchestrator
+except ImportError:
+    # Fallback for direct execution
+    import sys
+    import os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.dirname(current_dir)
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    from raw_alchemy import core, orchestrator
 
 @click.command()
 @click.argument("input_path", type=click.Path(exists=True))

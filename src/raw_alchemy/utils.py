@@ -1,7 +1,7 @@
 from typing import Optional
 import rawpy
 import numpy as np
-from raw_alchemy import lensfun_wrapper as lf
+from . import lensfun_wrapper as lf
 from numba import njit, prange
 
 # =========================================================

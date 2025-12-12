@@ -1,6 +1,6 @@
 import os
 import concurrent.futures
-from raw_alchemy import core
+from . import core
 
 # Supported RAW file extensions (lowercase)
 SUPPORTED_RAW_EXTENSIONS = [

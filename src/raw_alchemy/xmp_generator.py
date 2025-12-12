@@ -21,24 +21,15 @@ from io import BytesIO
 
 import numpy as np
 import colour
+try:
+    from .constants import LOG_ENCODING_MAP, LOG_TO_WORKING_SPACE, METERING_MODES
+except ImportError:
+    from constants import LOG_ENCODING_MAP, LOG_TO_WORKING_SPACE, METERING_MODES
 
 # --- Constants & Mappings ---
 
 # Adobe Custom Base85 Characters
 ADOBE_Z85_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?`'|()[]{}@%$#"
-
-# Mapping Log formats to their Gamuts and Transfer Functions in colour-science
-# Format: 'LogName': ('GamutName', 'TransferFunctionName')
-LOG_MAP = {
-    'S-Log3': ('S-Gamut3', 'S-Log3'),
-    'S-Log2': ('S-Gamut', 'S-Log2'),
-    'V-Log':  ('V-Gamut', 'V-Log'),
-    'LogC3':  ('ALEXA Wide Gamut', 'ALEXA Log C'),
-    'LogC4':  ('ARRI Wide Gamut 4', 'ARRI LogC4'),
-    'C-Log3': ('Cinema Gamut', 'Canon Log 3'),
-    'N-Log':  ('N-Gamut', 'N-Log'),
-    # Add more as needed
-}
 
 # --- Core Logic ---
 
@@ -148,7 +139,7 @@ def tetrahedral_resample(data, input_size, output_size):
 
     return out
 
-def apply_cst_pipeline(user_lut_path, log_space, output_size=32):
+def apply_cst_pipeline(user_lut_path, log_space, output_size=33):
     """
     Loads user LUT, creates ProPhoto Identity, transforms to Log, applies LUT.
     Returns: (output_size, final_data_numpy)
@@ -170,45 +161,27 @@ def apply_cst_pipeline(user_lut_path, log_space, output_size=32):
     B, G, R = np.meshgrid(domain, domain, domain, indexing='ij')
     prophoto_linear = np.stack([R, G, B], axis=-1) # Stack as RGB for color math
     
-    if log_space and log_space in LOG_MAP:
-        gamut_name, curve_name = LOG_MAP[log_space]
-        print(f"  - Pipeline: ProPhoto Linear -> {gamut_name} -> {curve_name} -> LUT")
-        
-        # A. Gamut Transform: ProPhoto RGB -> Target Gamut (Linear)
-        matrix = colour.matrix_RGB_to_RGB(
-            colour.RGB_COLOURSPACES['ProPhoto RGB'],
-            colour.RGB_COLOURSPACES[gamut_name]
-        )
-        # Apply matrix (dot product on last axis)
-        target_gamut_linear = np.einsum('...ij,...j->...i', matrix, prophoto_linear)
-        
-        # B. Transfer Function: Linear -> Log
-        log_encoded = colour.cctf_encoding(target_gamut_linear, function=curve_name)
-        
-        # C. Apply User LUT
-        # Since our grid is 32x32x32 but user LUT might be 33x33x33 or 65x65x65,
-        # we interpolate the user LUT at the log_encoded coordinates.
-        print(f"  - Applying User LUT ({user_lut.size}^3) to grid...")
-        final_rgb = user_lut.apply(log_encoded, interpolator=colour.algebra.table_interpolation_tetrahedral)
-        
-    else:
-        print("  - No Log space defined or found. Passing through.")
-        # If no CST, we effectively just resize the user LUT to 32x32x32
-        # We can use the tetrahedral resample function on the raw LUT data
-        # Be careful about dimension ordering from colour-science
-        return output_size, tetrahedral_resample(user_lut.table, user_lut.size, output_size)
+    log_color_space_name = LOG_TO_WORKING_SPACE.get(log_space)
+    log_curve_name = LOG_ENCODING_MAP.get(log_space, log_space)
 
-    # If CST was applied, final_rgb is already at output_size
-    # But colour-science apply returns (R,G,B) order usually if input was (R,G,B).
-    # Our prophoto_linear input was stacked [R,G,B].
-    # However, for the binary packing loop later, we need specific ordering.
-    # dng_rgb_table expects loops: R(outer), G, B(inner).
-    # In numpy shape (B, G, R, 3), axis 0 is B, 1 is G, 2 is R.
-    # We will transpose later.
-    
-    # Input ProPhoto grid was constructed as [R, G, B] channels.
-    # B, G, R meshgrid -> prophoto_linear[b, g, r] = [r_val, g_val, b_val]
-    # So final_rgb[b, g, r] = [r_out, g_out, b_out]
+    print(f"  - Pipeline: ProPhoto Linear -> {log_color_space_name} -> {log_curve_name} -> LUT")
+        
+    # A. Gamut Transform: ProPhoto RGB -> Target Gamut (Linear)
+    matrix = colour.matrix_RGB_to_RGB(
+        colour.RGB_COLOURSPACES['ProPhoto RGB'],
+        colour.RGB_COLOURSPACES[log_color_space_name]
+    )
+    # Apply matrix (dot product on last axis)
+    target_gamut_linear = np.einsum('...ij,...j->...i', matrix, prophoto_linear)
+    target_gamut_linear = np.maximum(target_gamut_linear, 1e-7)
+    # B. Transfer Function: Linear -> Log
+    log_encoded = colour.cctf_encoding(target_gamut_linear, function=log_curve_name)
+        
+    # C. Apply User LUT
+    # Since our grid is 33x33x33 but user LUT might be 33x33x33 or 65x65x65,
+    # we interpolate the user LUT at the log_encoded coordinates.
+    print(f"  - Applying User LUT ({user_lut.size}^3) to grid...")
+    final_rgb = user_lut.apply(log_encoded, interpolator=colour.algebra.table_interpolation_tetrahedral)
     
     return output_size, final_rgb
 
