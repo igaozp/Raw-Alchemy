@@ -183,6 +183,21 @@ def apply_cst_pipeline(user_lut_path, log_space, output_size=33):
     print(f"  - Applying User LUT ({user_lut.size}^3) to grid...")
     final_rgb = user_lut.apply(log_encoded, interpolator=colour.algebra.table_interpolation_tetrahedral)
     
+    # --- Debug Feature: Output Pipeline Cube ---
+    try:
+        # Generate a unique debug filename or overwrite a standard one
+        debug_filename = f"debug_pipeline_{output_size}.cube"
+        print(f"  [DEBUG] Writing pipeline output to {debug_filename}...")
+        
+        # Create a LUT3D object for export
+        # Note: Ensure the data is clamped if necessary, but usually we want to see raw output
+        debug_lut = colour.LUT3D(table=final_rgb, name=f"Debug Pipeline {log_space}")
+        colour.write_LUT(debug_lut, debug_filename)
+        print(f"  [DEBUG] Successfully wrote {debug_filename}")
+    except Exception as e:
+        print(f"  [DEBUG] Failed to write debug cube: {e}")
+    # -------------------------------------------
+
     return output_size, final_rgb
 
 def generate_rgb_table_stream(data, size, min_amt=0, max_amt=200):
@@ -242,9 +257,9 @@ def generate_rgb_table_stream(data, size, min_amt=0, max_amt=200):
         stream.write(flat_deltas.byteswap().tobytes())
         
     # Footer
-    write_u32(4) # ProPhoto
-    write_u32(0) # Linear Gamma (Since we baked the curve in)
-    write_u32(1) # Gamut Extend
+    write_u32(0) # ProPhoto
+    write_u32(1) # Linear Gamma (Since we baked the curve in)
+    write_u32(0) # Gamut Extend
     write_double(min_amt * 0.01) # 0.0
     write_double(max_amt * 0.01) # 2.0
     
@@ -260,7 +275,7 @@ def create_xmp_profile(profile_name, lut_path, log_space=None):
     try:
         # 2. Process Color Pipeline & Resizing
         # Target size 32 is standard for ACR RGBTable
-        size, data = apply_cst_pipeline(lut_path, log_space, output_size=32)
+        size, data = apply_cst_pipeline(lut_path, log_space, output_size=33)
         
         # 3. Binary Encoding
         raw_bytes = generate_rgb_table_stream(data, size, min_amt=0, max_amt=200)
